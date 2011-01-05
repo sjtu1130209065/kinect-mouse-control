@@ -149,19 +149,19 @@ void glut_idle() {
 				pos.fz=torso.position.Z;
 
 			if(pos.fx!=-1) {
-				if(abs(pos.fx-torso.position.X)>=100) {
+				if(abs(pos.fx-torso.position.X)>=50) {
 					pos.fx=torso.position.X;
 					cout << "Relative Posaenderung X" << endl;
 				}
 			}
 			if(pos.fy!=-1) {
-				if(abs(pos.fy-torso.position.Y)>=100) {
+				if(abs(pos.fy-torso.position.Y)>=50) {
 					pos.fy=torso.position.Y;
 					cout << "Relative Posaenderung Y" << endl;
 				}
 			}
 			if(pos.fz!=-1) {
-				if(abs(pos.fz-torso.position.Z)>=100) {
+				if(abs(pos.fz-torso.position.Z)>=50) {
 					pos.fz=torso.position.Z;
 					cout << "Relative Posaenderung Z" << endl;
 				}
