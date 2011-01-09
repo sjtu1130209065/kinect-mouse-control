@@ -2,6 +2,7 @@
 #include <string>
 #include <GL/glut.h>
 #include <XnCppWrapper.h>
+#include <windows.h>
 
 using namespace std;
 
@@ -19,7 +20,7 @@ struct Position {
 	int fz;
 	bool leftclick;
 	bool rightclick;
-} pos = { 0, 0, 0, -1, -1, -1, false, false };
+} posr = { 0, 0, 0, -1, -1, -1, false, false }, posl = { 0, 0, 0, -1, -1, -1, false, false };
 
 /* Globals */
 static int win;
@@ -31,7 +32,7 @@ xn::UserGenerator user;
 bool calibration_flag = false;
 XnUserID cUser[2] = { 0, 0 };
 XnUInt16 cnUsers = 0;	/* Auf 1 Benutzer beschränken */
-XnSkeletonJointPosition rhand;
+XnSkeletonJointPosition rhand, lhand;
 XnSkeletonJointPosition torso;
 
 
@@ -94,13 +95,13 @@ void glut_display() {
 	glLoadIdentity();
 	glTranslatef(0, 0, -50);
 
-	if(pos.leftclick)
+	if(posr.leftclick)
 		glColor3f(1.0, 0.0, 0.0);
 	else
 		glColor3f(1.0, 1.0, 1.0);
 	glPointSize(5);
 	glBegin(GL_POINTS);
-		glVertex3f(pos.x, -pos.y, 1);
+		glVertex3f(posr.x, -posr.y, 1);
 	glEnd();
 
 
@@ -108,11 +109,29 @@ void glut_display() {
 	glutSwapBuffers();
 }
 
+void LeftClick () {  
+	INPUT    Input={0};
+	// left down 
+	Input.type      = INPUT_MOUSE;
+	Input.mi.dwFlags  = MOUSEEVENTF_LEFTDOWN;
+	::SendInput(1,&Input,sizeof(INPUT));
+
+	// left up
+	::ZeroMemory(&Input,sizeof(INPUT));
+	Input.type      = INPUT_MOUSE;
+	Input.mi.dwFlags  = MOUSEEVENTF_LEFTUP;
+	::SendInput(1,&Input,sizeof(INPUT)); 
+}
+
 void glut_idle() {
 	static int round_coords = 0;
-	static int round_x=0;
-	static int round_y=0;
+	static int roundr_x=300;
+	static int roundr_y=200;
+	static int roundr_z=600;
+	static int roundl_x=300;
+	static int roundl_y=200;
 	static bool output_once = false;
+	static bool leftclick_old = false;
 
 	/* Warten auf neue Daten von Kinect */
 	nRetVal = context.WaitAndUpdateAll();
@@ -141,50 +160,81 @@ void glut_idle() {
 		skeleton.StartTracking(cUser[0]);
 		skeleton.GetSkeletonJointPosition(cUser[0], XN_SKEL_TORSO, torso);
 		if(torso.fConfidence) {
-			if(pos.fx==-1) 
-				pos.fx=torso.position.X;
-			if(pos.fy==-1) 
-				pos.fy=torso.position.Y;
-			if(pos.fz==-1) 
-				pos.fz=torso.position.Z;
+			if(posr.fx==-1) 
+				posr.fx=torso.position.X;
+			if(posr.fy==-1) 
+				posr.fy=torso.position.Y;
+			if(posr.fz==-1) 
+				posr.fz=torso.position.Z;
 
-			if(pos.fx!=-1) {
-				if(abs(pos.fx-torso.position.X)>=50) {
-					pos.fx=torso.position.X;
+			if(posr.fx!=-1) {
+				if(abs(posr.fx-torso.position.X)>=70) {
+					posr.fx=torso.position.X;
 					cout << "Relative Posaenderung X" << endl;
 				}
 			}
-			if(pos.fy!=-1) {
-				if(abs(pos.fy-torso.position.Y)>=50) {
-					pos.fy=torso.position.Y;
+			if(posr.fy!=-1) {
+				if(abs(posr.fy-torso.position.Y)>=70) {
+					posr.fy=torso.position.Y;
 					cout << "Relative Posaenderung Y" << endl;
 				}
 			}
-			if(pos.fz!=-1) {
-				if(abs(pos.fz-torso.position.Z)>=50) {
-					pos.fz=torso.position.Z;
+			if(posr.fz!=-1) {
+				if(abs(posr.fz-torso.position.Z)>=70) {
+					posr.fz=torso.position.Z;
 					cout << "Relative Posaenderung Z" << endl;
 				}
 			}
 		}
 
+		skeleton.GetSkeletonJointPosition(cUser[0], XN_SKEL_RIGHT_HAND, lhand);
+		if(lhand.fConfidence) {
+			roundl_x = (lhand.position.X) * 0.2f + roundl_x * 0.8f;
+			roundl_y = (lhand.position.Y) * 0.2f + roundl_y * 0.8f;
+
+			posl.x = posr.fx-roundl_x;
+			posl.y = posr.fy-roundl_y;
+			if(posl.x<=-400)
+				posr.leftclick = true;
+			else
+				posr.leftclick = false;
+
+			if(posr.leftclick && leftclick_old!=posr.leftclick) {
+				LeftClick();
+			}
+			leftclick_old=posr.leftclick;
+			
+
+			cout <<	"x: " <<
+					posl.x <<
+					"\ty: " <<
+					posl.y << 
+					"\tLeft: " <<
+					posr.leftclick <<
+					endl;
+		}
+
 		skeleton.GetSkeletonJointPosition(cUser[0], XN_SKEL_LEFT_HAND, rhand);
 		if(rhand.fConfidence) {
-// 			if(pos.fx==-1) 
-// 				pos.fx = rhand.position.X;
-// 			if(pos.fy==-1) 
-// 				pos.fy = rhand.position.Y;
-// 			if(pos.fz==-1) 
-// 				pos.fz = rhand.position.Z;
+			roundr_x = ((rhand.position.X-150)*3) * 0.1f + roundr_x * 0.9f;
+			roundr_y = ((rhand.position.Y-350)*3) * 0.1f + roundr_y * 0.9f;
+			roundr_z = rhand.position.Z * 0.5f + roundr_z * 0.5f;
 
-			pos.x = pos.fx-rhand.position.X+400;
-			pos.y = pos.fy-rhand.position.Y;
-			pos.z = pos.fz-rhand.position.Z;
+//			posr.x = posr.fx-roundr_x+400;	/* punkt im ogl bild */
 
-			if(pos.z>=400)
-				pos.leftclick = true;
+// 			posr.x = (posr.fx-roundr_x+50)*4;
+// 			posr.y = (posr.fy-roundr_y+430)*4;
+			posr.x = posr.fx-roundr_x;
+			posr.y = posr.fy-roundr_y;
+			posr.z = posr.fz-roundr_z;
+
+/*			if(posr.z>=400)
+				posr.leftclick = true;
 			else
-				pos.leftclick = false;
+				posr.leftclick = false;*/
+
+			SetCursorPos(posr.x, posr.y);
+
 
 // 			cout <<	"X: " <<
 // 				rhand.position.X << 
@@ -193,11 +243,11 @@ void glut_idle() {
 // 				"\t Z: " <<
 // 				rhand.position.Z <<
 // 				"\t\t x: " <<
-// 				pos.x <<
+// 				posr.x <<
 // 				"\t y: " <<
-// 				pos.y <<
+// 				posr.y <<
 // 				"\t z: " <<
-// 				pos.z <<
+// 				posr.z <<
 // 				endl;
 		}
 	}
